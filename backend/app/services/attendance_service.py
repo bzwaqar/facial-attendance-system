@@ -68,12 +68,25 @@ class AttendanceService:
         if result.scalar_one_or_none() is not None:
             raise DuplicateSessionError(session_id=session_in.session_id)
 
+        threshold = (
+            session_in.min_similarity_threshold
+            if session_in.min_similarity_threshold is not None
+            else getattr(session_in, "similarity_threshold", None)
+        )
+        instructor = session_in.instructor_name
+        if not instructor:
+            dept = getattr(session_in, "department", None)
+            room = getattr(session_in, "room_number", None)
+            parts = [p for p in [dept, room] if p]
+            if parts:
+                instructor = " / ".join(parts)
+
         db_session = AttendanceSession(
             session_id=session_in.session_id,
             course_name=session_in.course_name,
-            instructor_name=session_in.instructor_name,
+            instructor_name=instructor,
             is_active=True,
-            min_similarity_threshold=session_in.min_similarity_threshold,
+            min_similarity_threshold=threshold,
             min_confirmations=session_in.min_confirmations,
             created_at=datetime.now(timezone.utc),
         )

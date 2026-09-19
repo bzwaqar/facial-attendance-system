@@ -33,6 +33,7 @@ ENV/
 env/
 env.bak/
 venv.bak/
+.env
 
 # Environment variables & secrets (CRITICAL)
 .env

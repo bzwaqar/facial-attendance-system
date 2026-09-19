@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class AttendanceStatus(str, Enum):
@@ -18,11 +18,13 @@ class AttendanceStatus(str, Enum):
 class AttendanceSessionCreate(BaseModel):
     """Payload to create a new attendance session / class."""
 
+    model_config = ConfigDict(extra="ignore")
+
     session_id: str = Field(
         ...,
-        min_length=3,
+        min_length=1,
         max_length=100,
-        description="Unique identifier for the session (e.g., 'CS601-20260919-01').",
+        description="Unique identifier for the session (e.g., '12' or 'CS601-20260919-01').",
         examples=["CS601-20260919-01"],
     )
     course_name: Optional[str] = Field(
@@ -37,11 +39,27 @@ class AttendanceSessionCreate(BaseModel):
         description="Faculty member or instructor in charge.",
         examples=["Dr. Sarah Jenkins"],
     )
+    department: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Academic department.",
+    )
+    room_number: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Classroom or laboratory location.",
+    )
     min_similarity_threshold: Optional[float] = Field(
         None,
         ge=0.0,
         le=1.0,
         description="Optional session-specific similarity threshold override.",
+    )
+    similarity_threshold: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Alias for min_similarity_threshold.",
     )
     min_confirmations: Optional[int] = Field(
         None,
@@ -54,7 +72,7 @@ class AttendanceSessionCreate(BaseModel):
 class AttendanceSessionResponse(BaseModel):
     """Attendance session details representation."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     id: int
     session_id: str
@@ -71,6 +89,8 @@ class AttendanceSessionResponse(BaseModel):
 class AttendanceMarkRequest(BaseModel):
     """Payload to submit a verified face recognition event to the attendance engine."""
 
+    model_config = ConfigDict(extra="ignore")
+
     session_id: str = Field(..., description="Target attendance session identifier.")
     student_id: Optional[str] = Field(
         None,
@@ -84,6 +104,7 @@ class AttendanceMarkRequest(BaseModel):
         ...,
         ge=0.0,
         le=1.0,
+        validation_alias=AliasChoices("similarity_score", "confidence"),
         description="Recognition similarity score from biometric matcher.",
     )
     observation_count: int = Field(

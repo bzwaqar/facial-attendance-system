@@ -191,12 +191,17 @@ async function loadSessionDetails(sessionId) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    kpiSessionTitle.textContent = data.course_name;
-    kpiSessionMeta.textContent = `ID: ${data.session_id} • Room: ${data.room_number || 'N/A'}`;
-    kpiPresentStudents.textContent = data.present_count;
-    kpiAttendanceRate.textContent = `${data.attendance_rate.toFixed(1)}% of registered students`;
+    kpiSessionTitle.textContent = data.course_name || data.session_id;
+    kpiSessionMeta.textContent = `ID: ${data.session_id} • Location: ${data.instructor_name || data.room_number || 'N/A'}`;
 
-    renderAttendanceTable(data.attendees);
+    const attendees = data.present_students || data.attendees || data.records || [];
+    const presentCount = data.total_present ?? data.present_count ?? attendees.length;
+    const rate = data.attendance_rate_percent ?? data.attendance_rate ?? 0;
+
+    kpiPresentStudents.textContent = presentCount;
+    kpiAttendanceRate.textContent = `${Number(rate).toFixed(1)}% of registered students`;
+
+    renderAttendanceTable(attendees);
   } catch (err) {
     console.error(`Failed to load session ${sessionId}:`, err);
   }
@@ -256,11 +261,13 @@ function renderAttendanceTable(attendees) {
   }
 
   attendanceTableBody.innerHTML = attendees.map((att) => {
-    const dateStr = new Date(att.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const simScore = att.confidence != null ? att.confidence.toFixed(4) : 'N/A';
+    const rawDate = att.timestamp || att.marked_at;
+    const dateStr = rawDate ? new Date(rawDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--';
+    const scoreVal = att.similarity_score != null ? att.similarity_score : att.confidence;
+    const simScore = scoreVal != null ? Number(scoreVal).toFixed(4) : 'N/A';
     const livenessBadge = att.liveness_score != null && att.liveness_score >= 0.5
       ? `<span class="badge badge-emerald">Live (${(att.liveness_score * 100).toFixed(0)}%)</span>`
-      : `<span class="badge badge-warning">Unchecked</span>`;
+      : (att.is_live ? `<span class="badge badge-emerald">Live</span>` : `<span class="badge badge-warning">Unchecked</span>`);
 
     return `
       <tr>
@@ -269,9 +276,8 @@ function renderAttendanceTable(attendees) {
         <td class="mono">${dateStr}</td>
         <td class="mono">${simScore}</td>
         <td>${livenessBadge}</td>
-        <td><span class="badge badge-emerald">Present</span></td>
+        <td><span class="badge badge-emerald">${escapeHtml(att.status || 'Present')}</span></td>
       </tr>
-    `;
   }).join('');
 }
 
@@ -417,6 +423,21 @@ function showAlert(type, title, message) {
   alertBox.classList.remove('hidden');
 }
 
+function formatApiError(errData, fallback = 'Operation failed') {
+  if (!errData) return fallback;
+  if (typeof errData === 'string') return errData;
+  if (typeof errData.detail === 'string') return errData.detail;
+  if (Array.isArray(errData.detail)) {
+    return errData.detail.map(d => {
+      const field = d.loc ? d.loc.filter(x => x !== 'body').join('.') : '';
+      return `${field ? field + ': ' : ''}${d.msg || JSON.stringify(d)}`;
+    }).join('\n');
+  }
+  if (typeof errData.detail === 'object') return JSON.stringify(errData.detail);
+  if (errData.message) return errData.message;
+  return JSON.stringify(errData);
+}
+
 async function markAttendanceFromProbe() {
   if (!activeSessionId || !latestRecognitionResult) return;
 
@@ -429,9 +450,11 @@ async function markAttendanceFromProbe() {
     const payload = {
       session_id: activeSessionId,
       student_id: match.student_id,
+      similarity_score: match.similarity,
       confidence: match.similarity,
       bounding_box: match.bounding_box || [0, 0, 100, 100],
       liveness_score: match.liveness_score ?? 1.0,
+      is_live: match.is_live ?? true,
       marked_by: 'web_dashboard',
     };
 
@@ -442,8 +465,8 @@ async function markAttendanceFromProbe() {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to mark attendance' }));
-      throw new Error(err.detail || `HTTP ${res.status}`);
+      const errData = await res.json().catch(() => null);
+      throw new Error(formatApiError(errData, `HTTP ${res.status}`));
     }
 
     const data = await res.json();
@@ -483,6 +506,7 @@ async function handleCreateSession(e) {
       course_name: courseName,
       department: department,
       room_number: room,
+      min_similarity_threshold: threshold,
       similarity_threshold: threshold,
     };
 
@@ -493,8 +517,8 @@ async function handleCreateSession(e) {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to create session' }));
-      throw new Error(err.detail || `HTTP ${res.status}`);
+      const errData = await res.json().catch(() => null);
+      throw new Error(formatApiError(errData, `HTTP ${res.status}`));
     }
 
     // Reset form and close modal
@@ -507,7 +531,7 @@ async function handleCreateSession(e) {
     activeSessionId = sessionId;
     await loadSessionDetails(sessionId);
   } catch (err) {
-    alert(`Failed to create session: ${err.message}`);
+    alert(`Failed to create session:\n${err.message}`);
   }
 }
 
