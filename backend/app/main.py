@@ -32,6 +32,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.ENVIRONMENT,
         settings.DEBUG,
     )
+    # Warm up FAISS index from DB
+    try:
+        from app.db.session import AsyncSessionLocal
+        from app.services.matching_service import get_identity_matching_service
+        async with AsyncSessionLocal() as session:
+            matching_service = get_identity_matching_service()
+            count = await matching_service.rebuild_index_from_db(session)
+            logger.info("Startup: Loaded %d face embeddings into FAISS index.", count)
+    except Exception as exc:
+        logger.warning("Startup: FAISS index warmup skipped: %s", exc)
     yield
     logger.info("Shutting down %s", settings.PROJECT_NAME)
 

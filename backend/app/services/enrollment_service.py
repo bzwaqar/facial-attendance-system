@@ -200,13 +200,14 @@ class EnrollmentService:
         accepted_count = len(accepted_embeddings)
         rejected_count = total_submitted - accepted_count
 
-        # Step 8: Strict validation policy:
-        # All submitted images must be valid, and accepted count must meet min_images (5)
-        if rejected_count > 0 or accepted_count < min_images:
+        # Step 8: Validation policy:
+        # Accepted count must meet min_images (minimum 5 required)
+        if accepted_count < min_images:
             logger.warning(
-                "Enrollment validation failed for student '%s': %d accepted, %d rejected.",
+                "Enrollment validation failed for student '%s': %d accepted (minimum %d required), %d rejected.",
                 student_id,
                 accepted_count,
+                min_images,
                 rejected_count,
             )
             raise FaceEnrollmentValidationError(

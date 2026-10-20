@@ -6,6 +6,7 @@ import logging
 import signal
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Ensure backend directory is in sys.path
 backend_dir = Path(__file__).resolve().parents[1]
@@ -139,6 +140,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--attendance-session",
+        "--session-id",
+        dest="attendance_session",
         type=str,
         default=None,
         help="Optional session_id to automatically record attendance for confirmed recognitions.",

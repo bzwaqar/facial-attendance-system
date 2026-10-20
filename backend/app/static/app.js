@@ -19,6 +19,35 @@ const cancelSessionModalBtn = document.getElementById('cancelSessionModalBtn');
 const newSessionModal = document.getElementById('newSessionModal');
 const createSessionForm = document.getElementById('createSessionForm');
 
+// Enrollment Modal
+const openRegisterStudentModalBtn = document.getElementById('openRegisterStudentModalBtn');
+const registerStudentModal = document.getElementById('registerStudentModal');
+const closeRegisterModalBtn = document.getElementById('closeRegisterModalBtn');
+const cancelRegisterModalBtn = document.getElementById('cancelRegisterModalBtn');
+const registerStudentForm = document.getElementById('registerStudentForm');
+const enrollStep1 = document.getElementById('enrollStep1');
+const enrollStep2 = document.getElementById('enrollStep2');
+const stepIndicator1 = document.getElementById('stepIndicator1');
+const stepIndicator2 = document.getElementById('stepIndicator2');
+const stepConnector = document.querySelector('.step-connector');
+const enrollDropZone = document.getElementById('enrollDropZone');
+const enrollFileInput = document.getElementById('enrollFileInput');
+const enrollDropPrompt = document.getElementById('enrollDropPrompt');
+const enrollPreviewGrid = document.getElementById('enrollPreviewGrid');
+const enrollPhotoCountText = document.getElementById('enrollPhotoCountText');
+const enrollPhotoCountBadge = document.getElementById('enrollPhotoCountBadge');
+const enrollSubmitBtn = document.getElementById('enrollSubmitBtn');
+const enrollBackBtn = document.getElementById('enrollBackBtn');
+const enrollProgress = document.getElementById('enrollProgress');
+const enrollProgressFill = document.getElementById('enrollProgressFill');
+const enrollProgressText = document.getElementById('enrollProgressText');
+const enrollProgressPct = document.getElementById('enrollProgressPct');
+const enrollStatusMsg = document.getElementById('enrollStatusMsg');
+
+// Enrollment state
+let enrollSelectedFiles = []; // Array of File objects
+let pendingStudentId = null;  // student_id from step 1 after creation
+
 // KPIs
 const kpiTotalStudents = document.getElementById('kpiTotalStudents');
 const kpiEnrolledCount = document.getElementById('kpiEnrolledCount');
@@ -131,6 +160,87 @@ function setupEventListeners() {
   // Verification actions
   verifyBtn.addEventListener('click', runProbeVerification);
   markFromProbeBtn.addEventListener('click', markAttendanceFromProbe);
+
+  // ── Enrollment Modal ────────────────────────────────────────────────────────
+  openRegisterStudentModalBtn.addEventListener('click', () => {
+    resetEnrollmentModal();
+    registerStudentModal.classList.remove('hidden');
+  });
+
+  const closeEnrollModal = () => {
+    registerStudentModal.classList.add('hidden');
+    resetEnrollmentModal();
+  };
+
+  closeRegisterModalBtn.addEventListener('click', closeEnrollModal);
+  cancelRegisterModalBtn.addEventListener('click', closeEnrollModal);
+
+  // Close on backdrop click
+  registerStudentModal.addEventListener('click', (e) => {
+    if (e.target === registerStudentModal) closeEnrollModal();
+  });
+  newSessionModal.addEventListener('click', (e) => {
+    if (e.target === newSessionModal) {
+      newSessionModal.classList.add('hidden');
+    }
+  });
+
+  // Step 1 form submit → go to step 2
+  registerStudentForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const sid = document.getElementById('enrollStudentId').value.trim();
+    const sname = document.getElementById('enrollName').value.trim();
+    if (!sid || sid.length < 2) {
+      alert('Student ID must be at least 2 characters long (e.g. STU-2026-001).');
+      return;
+    }
+    if (!sname) {
+      alert('Please enter student full name.');
+      return;
+    }
+    goToEnrollStep2();
+  });
+
+  // Back button → return to step 1
+  enrollBackBtn.addEventListener('click', () => {
+    enrollStep2.classList.add('hidden');
+    enrollStep1.classList.remove('hidden');
+    stepIndicator1.classList.add('active');
+    stepIndicator1.classList.remove('done');
+    stepIndicator2.classList.remove('active', 'done');
+    if (stepConnector) stepConnector.classList.remove('done');
+    hideEnrollStatus();
+  });
+
+  // Enroll submit
+  enrollSubmitBtn.addEventListener('click', handleEnrollSubmit);
+
+  // Drop zone click
+  enrollDropZone.addEventListener('click', () => enrollFileInput.click());
+
+  enrollFileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addEnrollFiles(Array.from(e.target.files));
+      enrollFileInput.value = ''; // reset so same files can be re-selected
+    }
+  });
+
+  enrollDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    enrollDropZone.classList.add('dragover');
+  });
+
+  enrollDropZone.addEventListener('dragleave', () => {
+    enrollDropZone.classList.remove('dragover');
+  });
+
+  enrollDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    enrollDropZone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      addEnrollFiles(Array.from(e.dataTransfer.files));
+    }
+  });
 }
 
 // ==============================================================================
@@ -278,6 +388,7 @@ function renderAttendanceTable(attendees) {
         <td>${livenessBadge}</td>
         <td><span class="badge badge-emerald">${escapeHtml(att.status || 'Present')}</span></td>
       </tr>
+    `;
   }).join('');
 }
 
@@ -379,11 +490,12 @@ function displayRecognitionResult(data) {
   resSimilarityFill.style.width = `${simPercent}%`;
 
   // Check Liveness
-  const isLive = match.is_live !== false;
+  const isSpoof = match.liveness_status === 'SPOOF';
+  const isLive = !isSpoof;
   const livenessScore = match.liveness_score != null ? (match.liveness_score * 100).toFixed(0) + '%' : 'Verified';
   resLiveness.textContent = isLive ? `Live (${livenessScore})` : `Spoof/Photo (${livenessScore})`;
 
-  if (!isLive) {
+  if (isSpoof) {
     matchStatusPill.textContent = 'Spoof Detected';
     matchStatusPill.className = 'badge badge-danger';
     resStudentId.textContent = match.student_id || 'Unknown';
@@ -455,6 +567,8 @@ async function markAttendanceFromProbe() {
       bounding_box: match.bounding_box || [0, 0, 100, 100],
       liveness_score: match.liveness_score ?? 1.0,
       is_live: match.is_live ?? true,
+      observation_count: 5,
+      is_confirmed: true,
       marked_by: 'web_dashboard',
     };
 
@@ -546,4 +660,706 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ==============================================================================
+// Enrollment Modal Helpers
+// ==============================================================================
+
+function resetEnrollmentModal() {
+  // Reset step to 1
+  enrollStep1.classList.remove('hidden');
+  enrollStep2.classList.add('hidden');
+  stepIndicator1.classList.add('active');
+  stepIndicator1.classList.remove('done');
+  stepIndicator2.classList.remove('active', 'done');
+  if (stepConnector) stepConnector.classList.remove('done');
+
+  // Reset form
+  registerStudentForm.reset();
+
+  // Reset photo state
+  enrollSelectedFiles = [];
+  pendingStudentId = null;
+  enrollPreviewGrid.innerHTML = '';
+  enrollDropZone.classList.remove('has-files');
+  enrollProgress.classList.add('hidden');
+  enrollProgressFill.style.width = '0%';
+  hideEnrollStatus();
+  updateEnrollPhotoUI();
+}
+
+function goToEnrollStep2() {
+  const sid = document.getElementById('enrollStudentId').value.trim();
+  const sname = document.getElementById('enrollName').value.trim();
+  const display = document.getElementById('enrollTargetStudentDisplay');
+  if (display) {
+    display.textContent = `${sname || 'Student'} (${sid || '--'})`;
+  }
+
+  // Transition step indicator
+  stepIndicator1.classList.remove('active');
+  stepIndicator1.classList.add('done');
+  stepIndicator2.classList.add('active');
+  if (stepConnector) stepConnector.classList.add('done');
+
+  enrollStep1.classList.add('hidden');
+  enrollStep2.classList.remove('hidden');
+  hideEnrollStatus();
+  updateEnrollPhotoUI();
+}
+
+function addEnrollFiles(newFiles) {
+  const imageFiles = newFiles.filter(f => f.type.startsWith('image/'));
+  const remaining = 10 - enrollSelectedFiles.length;
+  const toAdd = imageFiles.slice(0, remaining);
+
+  toAdd.forEach(file => {
+    enrollSelectedFiles.push(file);
+    renderEnrollThumb(file, enrollSelectedFiles.length - 1);
+  });
+
+  updateEnrollPhotoUI();
+
+  if (imageFiles.length > remaining) {
+    showEnrollStatus('warning', `Maximum 10 photos allowed. ${imageFiles.length - remaining} file(s) were skipped.`);
+  }
+}
+
+function renderEnrollThumb(file, index) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'enroll-thumb-wrap';
+    wrap.dataset.index = index;
+
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.alt = `Photo ${index + 1}`;
+
+    const numLabel = document.createElement('span');
+    numLabel.className = 'enroll-thumb-num';
+    numLabel.textContent = `#${index + 1}`;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'enroll-thumb-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.title = 'Remove photo';
+    removeBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      removeEnrollFile(parseInt(wrap.dataset.index));
+    });
+
+    wrap.appendChild(img);
+    wrap.appendChild(numLabel);
+    wrap.appendChild(removeBtn);
+    enrollPreviewGrid.appendChild(wrap);
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeEnrollFile(index) {
+  enrollSelectedFiles.splice(index, 1);
+  // Re-render all thumbnails
+  enrollPreviewGrid.innerHTML = '';
+  enrollSelectedFiles.forEach((file, i) => renderEnrollThumb(file, i));
+  updateEnrollPhotoUI();
+}
+
+function updateEnrollPhotoUI() {
+  const count = enrollSelectedFiles.length;
+  const isValid = count >= 5 && count <= 10;
+
+  enrollPhotoCountText.textContent = `${count} photo${count !== 1 ? 's' : ''} selected`;
+
+  if (count === 0) {
+    enrollPhotoCountBadge.textContent = 'Need 5–10';
+    enrollPhotoCountBadge.className = 'badge badge-neutral';
+    enrollDropZone.classList.remove('has-files');
+  } else if (!isValid) {
+    enrollPhotoCountBadge.textContent = `Need ${count < 5 ? 5 - count + ' more' : 'max 10'}`;
+    enrollPhotoCountBadge.className = 'badge badge-warning';
+    enrollDropZone.classList.add('has-files');
+  } else {
+    enrollPhotoCountBadge.textContent = `${count} ✓ Ready`;
+    enrollPhotoCountBadge.className = 'badge badge-emerald';
+    enrollDropZone.classList.add('has-files');
+  }
+
+  enrollSubmitBtn.disabled = !isValid;
+  const submitText = document.getElementById('enrollSubmitBtnText');
+  if (submitText) {
+    if (isValid) {
+      submitText.textContent = `Save & Add to Database (${count} Ready)`;
+    } else {
+      submitText.textContent = `Save & Add to Database (${count}/5 min)`;
+    }
+  }
+}
+
+function showEnrollStatus(type, message) {
+  enrollStatusMsg.className = `enroll-status ${type}`;
+  enrollStatusMsg.innerHTML = message;
+  enrollStatusMsg.classList.remove('hidden');
+}
+
+function hideEnrollStatus() {
+  enrollStatusMsg.classList.add('hidden');
+  enrollStatusMsg.className = 'enroll-status hidden';
+  enrollStatusMsg.innerHTML = '';
+}
+
+function setEnrollProgress(pct, label) {
+  enrollProgressFill.style.width = `${pct}%`;
+  enrollProgressText.textContent = label;
+  enrollProgressPct.textContent = `${Math.round(pct)}%`;
+}
+
+async function handleEnrollSubmit() {
+  const studentId = document.getElementById('enrollStudentId').value.trim();
+  const name = document.getElementById('enrollName').value.trim();
+  const department = document.getElementById('enrollDept').value.trim() || 'Computer Science';
+  const semester = document.getElementById('enrollSemester').value.trim() || '1st';
+  const section = document.getElementById('enrollSection').value.trim() || 'A';
+
+  if (!studentId || !name) {
+    showEnrollStatus('error', 'Student ID and Name are required. Please go back to Step 1 and fill them in.');
+    return;
+  }
+
+  if (studentId.length < 2) {
+    showEnrollStatus('error', 'Student ID must be at least 2 characters long (e.g. STU-001). Please go back to Step 1 and update it.');
+    return;
+  }
+
+  if (enrollSelectedFiles.length < 5 || enrollSelectedFiles.length > 10) {
+    showEnrollStatus('warning', `Please provide between 5 and 10 face photos (currently ${enrollSelectedFiles.length}).`);
+    return;
+  }
+
+  enrollSubmitBtn.disabled = true;
+  enrollBackBtn.disabled = true;
+  hideEnrollStatus();
+  enrollProgress.classList.remove('hidden');
+
+  const step2Body = document.getElementById('modalStep2Body');
+  if (step2Body) {
+    step2Body.scrollTo({ top: step2Body.scrollHeight, behavior: 'smooth' });
+  }
+
+  try {
+    // ── Phase 1: Create Student (30%) ──────────────────────────────────────────
+    setEnrollProgress(10, 'Creating student record...');
+
+    const studentPayload = { student_id: studentId, name, department, semester, section };
+    const createRes = await fetch(`${API_BASE}/students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(studentPayload),
+    });
+
+    if (!createRes.ok) {
+      const errData = await createRes.json().catch(() => null);
+      // 409 = already exists — still proceed to enrollment
+      if (createRes.status !== 409) {
+        throw new Error(formatApiError(errData, `Failed to create student (HTTP ${createRes.status})`));
+      }
+      showEnrollStatus('warning', `⚠️ Student <strong>${escapeHtml(studentId)}</strong> already exists — enrolling new face photos onto existing record.`);
+    } else {
+      setEnrollProgress(30, 'Student created ✓ — uploading face photos...');
+    }
+
+    pendingStudentId = studentId;
+
+    // ── Phase 2: Enroll Face Photos (30%→95%) ─────────────────────────────────
+    setEnrollProgress(40, `Uploading ${enrollSelectedFiles.length} photos to biometric engine...`);
+
+    const formData = new FormData();
+    enrollSelectedFiles.forEach((file, i) => {
+      formData.append('files', file, file.name || `face_${i + 1}.jpg`);
+    });
+
+    // Animate progress from 40 → 85 while waiting
+    let fakePct = 40;
+    const fakeInterval = setInterval(() => {
+      fakePct = Math.min(fakePct + 3, 85);
+      setEnrollProgress(fakePct, 'Extracting ArcFace embeddings...');
+    }, 300);
+
+    const enrollRes = await fetch(`${API_BASE}/students/${encodeURIComponent(studentId)}/enroll?replace_existing=false`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    clearInterval(fakeInterval);
+    setEnrollProgress(95, 'Finalizing enrollment...');
+
+    if (!enrollRes.ok) {
+      const errData = await enrollRes.json().catch(() => null);
+      const msg = errData?.detail?.message || formatApiError(errData, `Enrollment failed (HTTP ${enrollRes.status})`);
+      throw new Error(msg);
+    }
+
+    const enrollData = await enrollRes.json();
+    setEnrollProgress(100, 'Enrollment complete!');
+
+    // ── Success ────────────────────────────────────────────────────────────────
+    showEnrollStatus('success',
+      `✅ <strong>${escapeHtml(name)}</strong> enrolled successfully!<br>` +
+      `📸 ${enrollData.total_enrolled} of ${enrollData.total_submitted} photos accepted.`
+    );
+
+    // Mark step 2 as done
+    stepIndicator2.classList.remove('active');
+    stepIndicator2.classList.add('done');
+
+    // Refresh student table and overview metrics
+    await loadStudents();
+    await loadOverview();
+    if (activeSessionId) {
+      await loadSessionDetails(activeSessionId);
+    }
+
+    // Auto-close after 2.5 seconds
+    setTimeout(() => {
+      registerStudentModal.classList.add('hidden');
+      resetEnrollmentModal();
+    }, 2500);
+
+  } catch (err) {
+    setEnrollProgress(0, 'Enrollment failed');
+    enrollProgress.classList.add('hidden');
+    showEnrollStatus('error', `❌ <strong>Error:</strong> ${escapeHtml(err.message)}`);
+  } finally {
+    enrollSubmitBtn.disabled = false;
+    enrollBackBtn.disabled = false;
+  }
+}
+
+// ==============================================================================
+// Camera Mode – Probe Panel (Live Attendance)
+// ==============================================================================
+let liveAttendStream = null;
+let liveAttendInterval = null;
+let liveAttendMarkedCount = 0;
+const liveAttendCooldowns = new Map();
+const ATTEND_COOLDOWN_MS = 10000;
+
+const probeTabUpload     = document.getElementById('probeTabUpload');
+const probeTabLive       = document.getElementById('probeTabLive');
+const probeModeUpload    = document.getElementById('probeModeUpload');
+const probeModeLive      = document.getElementById('probeModeLive');
+const liveAttendVideo    = document.getElementById('liveAttendVideo');
+const liveAttendCanvas   = document.getElementById('liveAttendCanvas');
+const liveAttendOverlay  = document.getElementById('liveAttendOverlay');
+const liveAttendDot      = document.getElementById('liveAttendDot');
+const liveAttendStatusText = document.getElementById('liveAttendStatusText');
+const liveAttendResult   = document.getElementById('liveAttendResult');
+const liveResultIcon     = document.getElementById('liveResultIcon');
+const liveResultName     = document.getElementById('liveResultName');
+const liveResultMeta     = document.getElementById('liveResultMeta');
+const liveResultBadge    = document.getElementById('liveResultBadge');
+const liveMarkedBadge    = document.getElementById('liveMarkedBadge');
+const autoMarkToggle     = document.getElementById('autoMarkToggle');
+const livenessCheckToggle = document.getElementById('livenessCheckToggle');
+const startLiveAttendBtn = document.getElementById('startLiveAttendBtn');
+const stopLiveAttendBtn  = document.getElementById('stopLiveAttendBtn');
+// Name overlay refs (on video)
+const liveNameOverlay = document.getElementById('liveNameOverlay');
+const liveNameBadge   = document.getElementById('liveNameBadge');
+const liveNameIcon    = document.getElementById('liveNameIcon');
+const liveNameText    = document.getElementById('liveNameText');
+const liveNameSub     = document.getElementById('liveNameSub');
+const liveNameStatus  = document.getElementById('liveNameStatus');
+
+probeTabUpload.addEventListener('click', () => {
+  probeTabUpload.classList.add('active');
+  probeTabLive.classList.remove('active');
+  probeModeUpload.classList.remove('hidden');
+  probeModeLive.classList.add('hidden');
+  stopLiveAttendance();
+});
+
+probeTabLive.addEventListener('click', () => {
+  probeTabLive.classList.add('active');
+  probeTabUpload.classList.remove('active');
+  probeModeLive.classList.remove('hidden');
+  probeModeUpload.classList.add('hidden');
+});
+
+startLiveAttendBtn.addEventListener('click', startLiveAttendance);
+stopLiveAttendBtn.addEventListener('click', stopLiveAttendance);
+
+async function startLiveAttendance() {
+  if (!activeSessionId) {
+    alert('Please select an active session first from the navbar.');
+    return;
+  }
+  try {
+    liveAttendStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+      audio: false,
+    });
+    liveAttendVideo.srcObject = liveAttendStream;
+    startLiveAttendBtn.disabled = true;
+    stopLiveAttendBtn.disabled = false;
+    liveAttendOverlay.classList.add('active');
+    liveAttendDot.className = 'cam-status-dot scanning';
+    liveAttendStatusText.textContent = 'Scanning for faces...';
+    liveAttendResult.classList.remove('hidden');
+    liveResultName.textContent = 'Scanning...';
+    liveResultMeta.textContent = '';
+    liveResultBadge.textContent = '';
+    liveResultIcon.textContent = '🔍';
+    liveAttendInterval = setInterval(scanFrameForAttendance, 1500);
+  } catch (err) {
+    alert(`Camera access denied: ${err.message}`);
+  }
+}
+
+function stopLiveAttendance() {
+  clearInterval(liveAttendInterval);
+  liveAttendInterval = null;
+  if (liveAttendStream) {
+    liveAttendStream.getTracks().forEach(t => t.stop());
+    liveAttendStream = null;
+  }
+  liveAttendVideo.srcObject = null;
+  startLiveAttendBtn.disabled = false;
+  stopLiveAttendBtn.disabled = true;
+  liveAttendOverlay.classList.remove('active');
+  liveAttendDot.className = 'cam-status-dot';
+  liveAttendStatusText.textContent = 'Camera off';
+  liveAttendResult.classList.add('hidden');
+}
+
+async function scanFrameForAttendance() {
+  if (!liveAttendStream) return;
+  if (!liveAttendVideo.readyState || liveAttendVideo.readyState < 2) return;
+  const vw = liveAttendVideo.videoWidth || 640;
+  const vh = liveAttendVideo.videoHeight || 480;
+  liveAttendCanvas.width = vw;
+  liveAttendCanvas.height = vh;
+  const ctx = liveAttendCanvas.getContext('2d');
+  ctx.drawImage(liveAttendVideo, 0, 0, vw, vh);
+  const base64 = liveAttendCanvas.toDataURL('image/jpeg', 0.8);
+  try {
+    const checkLiveness = livenessCheckToggle ? livenessCheckToggle.checked : true;
+    const res = await fetch(`${API_BASE}/recognition/predict-base64`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64: base64, check_liveness: checkLiveness }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (!data.faces || data.faces.length === 0) {
+      liveAttendDot.className = 'cam-status-dot scanning';
+      liveAttendStatusText.textContent = 'No face detected';
+      liveResultIcon.textContent = '👤';
+      liveResultName.textContent = 'No face in frame';
+      liveResultMeta.textContent = '';
+      liveResultBadge.textContent = '';
+      liveAttendResult.className = 'cam-live-result';
+      // Hide overlay on video
+      liveNameOverlay.classList.add('hidden');
+      return;
+    }
+
+    const face = data.faces[0];
+    const isSpoof   = checkLiveness && (face.liveness_status === 'SPOOF');
+    const isMatched = face.matched;
+    const sim       = face.similarity_score ?? 0;
+    const name      = face.student_name || face.student_id || 'Unknown';
+    const simPct    = `${(sim * 100).toFixed(1)}%`;
+
+    if (isSpoof) {
+      liveAttendDot.className = 'cam-status-dot error';
+      liveAttendStatusText.textContent = 'Spoof detected!';
+      liveResultIcon.textContent = '⛔';
+      liveResultName.textContent = 'Presentation Attack';
+      liveResultMeta.textContent = face.liveness_reason || 'Anti-spoofing check failed';
+      liveResultBadge.textContent = 'SPOOF';
+      liveResultBadge.className = 'badge badge-danger';
+      liveAttendResult.className = 'cam-live-result spoof';
+      // Show overlay on video – spoof
+      setLiveNameOverlay('⛔', 'Spoof Detected', 'Anti-spoofing failed', 'SPOOF', 'spoof');
+      return;
+    }
+
+    if (!isMatched) {
+      liveAttendDot.className = 'cam-status-dot error';
+      liveAttendStatusText.textContent = 'Unknown face';
+      liveResultIcon.textContent = '❓';
+      liveResultName.textContent = 'Unknown Person';
+      liveResultMeta.textContent = `Similarity: ${simPct} (below threshold)`;
+      liveResultBadge.textContent = 'UNKNOWN';
+      liveResultBadge.className = 'badge badge-warning';
+      liveAttendResult.className = 'cam-live-result unknown';
+      // Show overlay on video – unknown
+      setLiveNameOverlay('❓', 'Unknown Person', `Sim: ${simPct} — below threshold`, 'UNKNOWN', 'unknown');
+      return;
+    }
+
+    // ── Matched + Live ──
+    liveAttendDot.className = 'cam-status-dot matched';
+    liveAttendStatusText.textContent = `Identified: ${name}`;
+    liveResultIcon.textContent = '✅';
+    liveResultName.textContent = name;
+    liveResultMeta.textContent = `${face.student_id} • Similarity: ${simPct}`;
+    liveResultBadge.textContent = 'MATCHED';
+    liveResultBadge.className = 'badge badge-emerald';
+    liveAttendResult.className = 'cam-live-result matched';
+    // Show overlay on video – matched
+    setLiveNameOverlay('✅', name, `${face.student_id} • ${simPct}`, 'MATCHED', 'matched');
+
+    if (autoMarkToggle.checked && face.student_id) {
+      const lastMark = liveAttendCooldowns.get(face.student_id) || 0;
+      if (Date.now() - lastMark > ATTEND_COOLDOWN_MS) {
+        liveAttendCooldowns.set(face.student_id, Date.now());
+        await autoMarkLiveAttendance(face);
+      }
+    }
+  } catch (_) {}
+}
+
+function setLiveNameOverlay(icon, name, sub, statusLabel, stateClass) {
+  liveNameIcon.textContent = icon;
+  liveNameText.textContent = name;
+  liveNameSub.textContent = sub;
+  liveNameStatus.textContent = statusLabel;
+  liveNameBadge.className = `cam-name-badge ${stateClass}`;
+  liveNameOverlay.classList.remove('hidden');
+  // Auto-hide after 4 seconds if nothing new comes in
+  clearTimeout(liveNameOverlay._hideTimer);
+  liveNameOverlay._hideTimer = setTimeout(() => {
+    liveNameOverlay.classList.add('hidden');
+  }, 4000);
+}
+
+async function autoMarkLiveAttendance(face) {
+  try {
+    const payload = {
+      session_id: activeSessionId,
+      student_id: face.student_id,
+      similarity_score: face.similarity_score,
+      confidence: face.similarity_score,
+      bounding_box: face.bbox || [0, 0, 100, 100],
+      liveness_score: face.liveness_score ?? 1.0,
+      is_live: face.is_live ?? true,
+      observation_count: 5,
+      is_confirmed: true,
+      marked_by: 'live_camera',
+    };
+    const res = await fetch(`${API_BASE}/attendance/mark`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      if (d.status === 'PRESENT') {
+        liveAttendMarkedCount++;
+        liveMarkedBadge.textContent = `${liveAttendMarkedCount} Marked`;
+        liveMarkedBadge.className = 'badge badge-emerald';
+        liveAttendStatusText.textContent = `✓ ${face.student_name || face.student_id} marked present!`;
+        setLiveNameOverlay('✅', face.student_name || face.student_id, `${face.student_id} • Marked Present!`, 'PRESENT', 'matched');
+        await loadSessionDetails(activeSessionId);
+        await loadOverview();
+      } else if (d.status === 'ALREADY_MARKED') {
+        liveAttendStatusText.textContent = `ℹ ${face.student_name || face.student_id} already marked!`;
+        setLiveNameOverlay('ℹ️', face.student_name || face.student_id, `${face.student_id} • Already Marked`, 'LOGGED', 'matched');
+        await loadSessionDetails(activeSessionId);
+      } else {
+        console.warn('Attendance mark response:', d);
+        liveAttendStatusText.textContent = `${d.status}: ${d.message || ''}`;
+        liveAttendCooldowns.delete(face.student_id);
+      }
+    } else {
+      const errData = await res.json().catch(() => null);
+      console.error('Attendance mark HTTP error:', errData);
+      liveAttendStatusText.textContent = `Error: ${errData?.detail || res.statusText}`;
+      liveAttendCooldowns.delete(face.student_id);
+    }
+  } catch (err) {
+    console.error('autoMarkLiveAttendance error:', err);
+    liveAttendCooldowns.delete(face.student_id);
+  }
+}
+
+// ==============================================================================
+// Camera Mode – Enrollment Live Capture
+// ==============================================================================
+let enrollCamStream = null;
+let enrollCamAutoInterval = null;
+const ENROLL_TARGET = 10;
+
+const enrollTabUpload        = document.getElementById('enrollTabUpload');
+const enrollTabCamera        = document.getElementById('enrollTabCamera');
+const enrollModeUpload       = document.getElementById('enrollModeUpload');
+const enrollModeCamera       = document.getElementById('enrollModeCamera');
+const enrollCamVideo         = document.getElementById('enrollCamVideo');
+const enrollCamCanvas        = document.getElementById('enrollCamCanvas');
+const enrollCamFlash         = document.getElementById('enrollCamFlash');
+const enrollCamCount         = document.getElementById('enrollCamCount');
+const enrollCamDots          = document.getElementById('enrollCamDots');
+const enrollStartCamBtn      = document.getElementById('enrollStartCamBtn');
+const enrollCaptureBtnManual = document.getElementById('enrollCaptureBtnManual');
+const enrollStopCamBtn       = document.getElementById('enrollStopCamBtn');
+
+enrollTabUpload.addEventListener('click', () => {
+  enrollTabUpload.classList.add('active');
+  enrollTabCamera.classList.remove('active');
+  enrollModeUpload.classList.remove('hidden');
+  enrollModeCamera.classList.add('hidden');
+  stopEnrollCamera();
+});
+
+enrollTabCamera.addEventListener('click', () => {
+  enrollTabCamera.classList.add('active');
+  enrollTabUpload.classList.remove('active');
+  enrollModeCamera.classList.remove('hidden');
+  enrollModeUpload.classList.add('hidden');
+  initEnrollDots();
+});
+
+enrollStartCamBtn.addEventListener('click', startEnrollCamera);
+enrollStopCamBtn.addEventListener('click', stopEnrollCamera);
+enrollCaptureBtnManual.addEventListener('click', () => captureEnrollFrame());
+
+function initEnrollDots() {
+  enrollCamDots.innerHTML = '';
+  for (let i = 0; i < ENROLL_TARGET; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'cam-dot';
+    dot.id = `enrollDot${i}`;
+    enrollCamDots.appendChild(dot);
+  }
+}
+
+async function startEnrollCamera() {
+  try {
+    enrollCamStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+      audio: false,
+    });
+    enrollCamVideo.srcObject = enrollCamStream;
+    enrollStartCamBtn.disabled = true;
+    enrollCaptureBtnManual.disabled = false;
+    enrollStopCamBtn.disabled = false;
+
+    // Remove any previously camera-captured files
+    enrollSelectedFiles = enrollSelectedFiles.filter(f => !f._fromCamera);
+    initEnrollDots();
+    updateEnrollCamCount();
+
+    // Auto-capture every 1.2 seconds
+    enrollCamAutoInterval = setInterval(() => {
+      if (enrollSelectedFiles.length < ENROLL_TARGET) {
+        captureEnrollFrame();
+      } else {
+        clearInterval(enrollCamAutoInterval);
+        enrollCamAutoInterval = null;
+        enrollCaptureBtnManual.disabled = true;
+      }
+    }, 1200);
+  } catch (err) {
+    alert(`Camera access denied: ${err.message}`);
+  }
+}
+
+function stopEnrollCamera() {
+  clearInterval(enrollCamAutoInterval);
+  enrollCamAutoInterval = null;
+  if (enrollCamStream) {
+    enrollCamStream.getTracks().forEach(t => t.stop());
+    enrollCamStream = null;
+  }
+  enrollCamVideo.srcObject = null;
+  enrollStartCamBtn.disabled = false;
+  enrollCaptureBtnManual.disabled = true;
+  enrollStopCamBtn.disabled = true;
+}
+
+function captureEnrollFrame() {
+  if (!enrollCamStream || enrollSelectedFiles.length >= ENROLL_TARGET) return;
+  if (!enrollCamVideo.readyState || enrollCamVideo.readyState < 2) return;
+  const vw = enrollCamVideo.videoWidth || 640;
+  const vh = enrollCamVideo.videoHeight || 480;
+  enrollCamCanvas.width = vw;
+  enrollCamCanvas.height = vh;
+  const ctx = enrollCamCanvas.getContext('2d');
+  ctx.translate(vw, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(enrollCamVideo, 0, 0, vw, vh);
+
+  // Flash
+  enrollCamFlash.classList.add('flash-active');
+  setTimeout(() => enrollCamFlash.classList.remove('flash-active'), 120);
+
+  enrollCamCanvas.toBlob((blob) => {
+    if (!blob) return;
+    const idx = enrollSelectedFiles.length;
+    const file = new File([blob], `cam_face_${idx + 1}.jpg`, { type: 'image/jpeg' });
+    file._fromCamera = true;
+    enrollSelectedFiles.push(file);
+    renderEnrollThumb(file, idx);
+    updateEnrollCamCount();
+    updateEnrollPhotoUI();
+
+    const dot = document.getElementById(`enrollDot${idx}`);
+    if (dot) { dot.classList.remove('capturing'); dot.classList.add('filled'); }
+    const nextDot = document.getElementById(`enrollDot${idx + 1}`);
+    if (nextDot) nextDot.classList.add('capturing');
+
+    if (enrollSelectedFiles.length >= ENROLL_TARGET) {
+      stopEnrollCamera();
+      showEnrollStatus('success', `✅ <strong>All ${ENROLL_TARGET} photos captured!</strong> Saving to database in 2 seconds (or click button below)...`);
+      const step2Body = document.getElementById('modalStep2Body');
+      if (step2Body) {
+        step2Body.scrollTo({ top: step2Body.scrollHeight, behavior: 'smooth' });
+      }
+      enrollSubmitBtn.disabled = false;
+      enrollSubmitBtn.classList.add('btn-pulse');
+      setTimeout(() => {
+        enrollSubmitBtn.classList.remove('btn-pulse');
+        if (!enrollSubmitBtn.disabled && enrollSelectedFiles.length >= 5) {
+          handleEnrollSubmit();
+        }
+      }, 2000);
+    }
+  }, 'image/jpeg', 0.85);
+}
+
+function updateEnrollCamCount() {
+  if (enrollCamCount) enrollCamCount.textContent = `${enrollSelectedFiles.length} / ${ENROLL_TARGET}`;
+}
+
+// Override resetEnrollmentModal to also stop cameras and reset tabs
+function resetEnrollmentModal() {
+  stopEnrollCamera();
+  stopLiveAttendance();
+  enrollStep1.classList.remove('hidden');
+  enrollStep2.classList.add('hidden');
+  stepIndicator1.classList.add('active');
+  stepIndicator1.classList.remove('done');
+  stepIndicator2.classList.remove('active', 'done');
+  if (stepConnector) stepConnector.classList.remove('done');
+  registerStudentForm.reset();
+  enrollSelectedFiles = [];
+  pendingStudentId = null;
+  enrollPreviewGrid.innerHTML = '';
+  enrollDropZone.classList.remove('has-files');
+  enrollProgress.classList.add('hidden');
+  enrollProgressFill.style.width = '0%';
+  enrollSubmitBtn.classList.remove('btn-pulse');
+  const submitText = document.getElementById('enrollSubmitBtnText');
+  if (submitText) submitText.textContent = 'Save & Add to Database';
+  hideEnrollStatus();
+  updateEnrollPhotoUI();
+  // Reset mode tabs
+  if (enrollTabUpload) enrollTabUpload.classList.add('active');
+  if (enrollTabCamera) enrollTabCamera.classList.remove('active');
+  if (enrollModeUpload) enrollModeUpload.classList.remove('hidden');
+  if (enrollModeCamera) enrollModeCamera.classList.add('hidden');
 }

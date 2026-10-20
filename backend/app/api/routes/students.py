@@ -177,6 +177,14 @@ async def enroll_student_faces(
             max_images=10,
             replace_existing=replace_existing,
         )
+        await session.commit()
+        # Immediately refresh FAISS index with new embeddings
+        try:
+            from app.services.matching_service import get_identity_matching_service
+            matching_service = get_identity_matching_service()
+            await matching_service.rebuild_index_from_db(session)
+        except Exception as idx_err:
+            logger.warning("Failed to refresh FAISS index after enrollment: %s", idx_err)
         return response
 
     except StudentNotFoundError as exc:

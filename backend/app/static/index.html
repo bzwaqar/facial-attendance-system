@@ -47,6 +47,10 @@
       <div class="badge status-badge-online">
         <span class="status-dot"></span> System Online
       </div>
+      <button id="openRegisterStudentModalBtn" class="btn btn-emerald">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Register Student
+      </button>
       <button id="openNewSessionModalBtn" class="btn btn-secondary">
         + New Session
       </button>
@@ -132,8 +136,7 @@
     <!-- Main 2-Column Split: Probe Verification + Session Attendance Stream -->
     <div class="dashboard-split">
       <!-- Left Column: Live Biometric Tester & Camera Probe -->
-      <section class="panel panel-left">
-        <div class="panel-header">
+      <section class="panel panel-left">        <div class="panel-header">
           <div>
             <h2 class="panel-title">Biometric Face Recognition</h2>
             <p class="panel-subtitle">Probe image test, similarity scoring, and liveness check</p>
@@ -141,40 +144,113 @@
           <span class="badge badge-info" id="probeStatusBadge">Ready</span>
         </div>
 
+        <!-- Mode Tabs -->
+        <div class="cam-tab-group probe-tabs">
+          <button class="cam-tab active" id="probeTabUpload" data-tab="upload">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Upload Image
+          </button>
+          <button class="cam-tab" id="probeTabLive" data-tab="live">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+            Live Camera
+          </button>
+        </div>
+
         <div class="panel-body">
-          <!-- Image Probe Dropzone / Input -->
-          <div class="probe-box" id="dropZone">
-            <input type="file" id="fileInput" accept="image/*" class="file-input-hidden" />
-            <div id="dropZonePrompt" class="dropzone-content">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-              <p class="dropzone-main-text"><strong>Click to upload</strong> or drag & drop a face photo</p>
-              <p class="dropzone-sub-text">PNG, JPG, JPEG (Max 10MB)</p>
+          <!-- ── UPLOAD MODE ── -->
+          <div id="probeModeUpload">
+            <div class="probe-box" id="dropZone">
+              <input type="file" id="fileInput" accept="image/*" class="file-input-hidden" />
+              <div id="dropZonePrompt" class="dropzone-content">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <p class="dropzone-main-text"><strong>Click to upload</strong> or drag &amp; drop a face photo</p>
+                <p class="dropzone-sub-text">PNG, JPG, JPEG (Max 10MB)</p>
+              </div>
+              <div id="previewContainer" class="preview-container hidden">
+                <img id="previewImage" alt="Probe Image Preview" />
+                <button id="clearImageBtn" class="btn-clear" title="Clear image">×</button>
+              </div>
             </div>
-            <div id="previewContainer" class="preview-container hidden">
-              <img id="previewImage" alt="Probe Image Preview" />
-              <button id="clearImageBtn" class="btn-clear" title="Clear image">×</button>
+            <div class="probe-controls">
+              <button id="verifyBtn" class="btn btn-primary" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Run Biometric Verification
+              </button>
+              <button id="markFromProbeBtn" class="btn btn-emerald" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Mark Session Attendance
+              </button>
             </div>
           </div>
 
-          <!-- Controls for probe verification -->
-          <div class="probe-controls">
-            <button id="verifyBtn" class="btn btn-primary" disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              Run Biometric Verification
-            </button>
-            <button id="markFromProbeBtn" class="btn btn-emerald" disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              Mark Session Attendance
-            </button>
+          <!-- ── LIVE CAMERA MODE ── -->
+          <div id="probeModeLive" class="hidden">
+            <div class="cam-preview-wrap" id="liveAttendCamWrap">
+              <video id="liveAttendVideo" autoplay muted playsinline class="cam-video"></video>
+              <canvas id="liveAttendCanvas" class="cam-canvas-hidden"></canvas>
+              <!-- Scanning ring overlay -->
+              <div class="cam-scan-overlay" id="liveAttendOverlay">
+                <div class="cam-scan-ring"></div>
+              </div>
+              <!-- Live name ID overlay — shown on match -->
+              <div class="cam-name-overlay hidden" id="liveNameOverlay">
+                <div class="cam-name-badge" id="liveNameBadge">
+                  <span class="cam-name-icon" id="liveNameIcon">✅</span>
+                  <div class="cam-name-info">
+                    <span class="cam-name-text" id="liveNameText">Name</span>
+                    <span class="cam-name-sub" id="liveNameSub">ID • 0.00%</span>
+                  </div>
+                  <span class="cam-name-status" id="liveNameStatus"></span>
+                </div>
+              </div>
+              <!-- Status strip -->
+              <div class="cam-status-strip" id="liveAttendStatus">
+                <span class="cam-status-dot" id="liveAttendDot"></span>
+                <span id="liveAttendStatusText">Camera off</span>
+              </div>
+            </div>
+
+            <!-- Auto-mark toggle -->
+            <div class="cam-automark-row">
+              <label class="cam-toggle-wrap" for="autoMarkToggle">
+                <input type="checkbox" id="autoMarkToggle" checked />
+                <span class="cam-toggle-slider"></span>
+              </label>
+              <span class="cam-toggle-label">Auto-mark attendance when face confirmed</span>
+              <span class="badge badge-neutral" id="liveMarkedBadge">0 Marked</span>
+            </div>
+            <div class="cam-automark-row" style="margin-top:0.35rem">
+              <label class="cam-toggle-wrap" for="livenessCheckToggle">
+                <input type="checkbox" id="livenessCheckToggle" checked />
+                <span class="cam-toggle-slider"></span>
+              </label>
+              <span class="cam-toggle-label">Anti-spoofing check (liveness detection)</span>
+            </div>
+
+            <!-- Live result strip -->
+            <div class="cam-live-result hidden" id="liveAttendResult">
+              <span id="liveResultIcon">🔍</span>
+              <div class="cam-live-result-text">
+                <span class="cam-live-name" id="liveResultName">Scanning...</span>
+                <span class="cam-live-meta" id="liveResultMeta"></span>
+              </div>
+              <span class="badge" id="liveResultBadge"></span>
+            </div>
+
+            <div class="probe-controls" style="margin-top:0.75rem">
+              <button id="startLiveAttendBtn" class="btn btn-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                Start Scanning
+              </button>
+              <button id="stopLiveAttendBtn" class="btn btn-outline" disabled>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                Stop
+              </button>
+            </div>
           </div>
 
           <!-- Recognition Diagnostics & Confidence Breakdown Card -->
@@ -183,45 +259,23 @@
               <h3 class="result-title">Recognition Result</h3>
               <span id="matchStatusPill" class="badge">--</span>
             </div>
-
             <div class="result-grid">
-              <div class="result-field">
-                <span class="field-label">Student ID</span>
-                <span class="field-value mono" id="resStudentId">--</span>
-              </div>
-              <div class="result-field">
-                <span class="field-label">Name</span>
-                <span class="field-value" id="resStudentName">--</span>
-              </div>
-              <div class="result-field">
-                <span class="field-label">Cosine Similarity</span>
-                <span class="field-value mono" id="resSimilarity">--</span>
-              </div>
-              <div class="result-field">
-                <span class="field-label">Liveness Status</span>
-                <span class="field-value" id="resLiveness">--</span>
-              </div>
+              <div class="result-field"><span class="field-label">Student ID</span><span class="field-value mono" id="resStudentId">--</span></div>
+              <div class="result-field"><span class="field-label">Name</span><span class="field-value" id="resStudentName">--</span></div>
+              <div class="result-field"><span class="field-label">Cosine Similarity</span><span class="field-value mono" id="resSimilarity">--</span></div>
+              <div class="result-field"><span class="field-label">Liveness Status</span><span class="field-value" id="resLiveness">--</span></div>
             </div>
-
-            <!-- Visual Similarity Progress Bar -->
             <div class="similarity-bar-wrap">
-              <div class="similarity-bar-labels">
-                <span>Threshold: 0.60</span>
-                <span id="resSimilarityPercent">0%</span>
-              </div>
-              <div class="similarity-bar-bg">
-                <div id="resSimilarityFill" class="similarity-bar-fill" style="width: 0%"></div>
-              </div>
+              <div class="similarity-bar-labels"><span>Threshold: 0.60</span><span id="resSimilarityPercent">0%</span></div>
+              <div class="similarity-bar-bg"><div id="resSimilarityFill" class="similarity-bar-fill" style="width: 0%"></div></div>
             </div>
-
-            <!-- Unknown / Spoof Alert Box -->
             <div id="alertBox" class="alert-box hidden">
               <div class="alert-icon" id="alertIcon">⚠️</div>
               <div class="alert-text" id="alertText">Alert details</div>
             </div>
           </div>
         </div>
-      </section>
+      </section>ction>
 
       <!-- Right Column: Live Session Attendance Roster -->
       <section class="panel panel-right">
@@ -391,6 +445,201 @@
           <button type="submit" class="btn btn-primary">Create Session</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       Register Student + Face Enrollment Modal (2-Step)
+       ============================================================ -->
+  <div id="registerStudentModal" class="modal-backdrop hidden">
+    <div class="modal-dialog modal-dialog-lg">
+
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="enroll-header-left">
+          <div class="enroll-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          </div>
+          <div>
+            <h3 class="modal-title">Register &amp; Enroll Student</h3>
+            <p class="modal-subtitle">Add a new student and enroll their facial biometrics</p>
+          </div>
+        </div>
+        <button id="closeRegisterModalBtn" class="btn-clear enroll-close">×</button>
+      </div>
+
+      <!-- Step Indicator -->
+      <div class="step-indicator">
+        <div class="step-item active" id="stepIndicator1">
+          <div class="step-circle">1</div>
+          <span class="step-label">Student Info</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" id="stepIndicator2">
+          <div class="step-circle">2</div>
+          <span class="step-label">Face Photos</span>
+        </div>
+      </div>
+
+      <!-- STEP 1: Student Info -->
+      <div id="enrollStep1" class="modal-body">
+        <form id="registerStudentForm">
+          <div class="form-row">
+            <div class="form-group col">
+              <label for="enrollStudentId">Student ID * (min 2 chars)</label>
+              <input type="text" id="enrollStudentId" required placeholder="e.g. STU-2026-001" minlength="2" class="text-input" />
+            </div>
+            <div class="form-group col">
+              <label for="enrollName">Full Name *</label>
+              <input type="text" id="enrollName" required placeholder="e.g. Ali Hassan" class="text-input" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col">
+              <label for="enrollDept">Department</label>
+              <input type="text" id="enrollDept" value="Computer Science" placeholder="e.g. Computer Science" class="text-input" />
+            </div>
+            <div class="form-group col">
+              <label for="enrollSemester">Semester</label>
+              <input type="text" id="enrollSemester" value="1st" placeholder="e.g. 6th" class="text-input" />
+            </div>
+            <div class="form-group col">
+              <label for="enrollSection">Section</label>
+              <input type="text" id="enrollSection" value="A" placeholder="e.g. A" class="text-input" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="cancelRegisterModalBtn" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+              Next: Face Photos
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- STEP 2: Face Photos (Upload OR Live Camera) -->
+      <div id="enrollStep2" class="modal-body modal-step2-container hidden">
+
+        <!-- Scrollable Body Content -->
+        <div class="modal-step2-body" id="modalStep2Body">
+
+          <!-- Enrolling target student header banner -->
+          <div class="enroll-target-student-banner" id="enrollTargetStudentBanner">
+            <div style="display:flex;align-items:center;gap:0.5rem">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Enrolling biometrics for:</span>
+            </div>
+            <strong id="enrollTargetStudentDisplay" style="color:var(--text-primary)">--</strong>
+          </div>
+
+          <!-- Mode tabs -->
+          <div class="cam-tab-group" style="margin-bottom:0.5rem">
+            <button class="cam-tab active" id="enrollTabUpload" data-enroll-tab="upload">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Photos
+            </button>
+            <button class="cam-tab" id="enrollTabCamera" data-enroll-tab="camera">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              Live Camera
+            </button>
+          </div>
+
+          <!-- ── UPLOAD TAB ── -->
+          <div id="enrollModeUpload">
+            <div class="enroll-info-bar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Upload <strong>5 to 10 clear face photos</strong>. Use different angles &amp; lighting for best accuracy.
+            </div>
+            <div class="enroll-dropzone" id="enrollDropZone">
+              <input type="file" id="enrollFileInput" accept="image/*" multiple class="file-input-hidden" />
+              <div id="enrollDropPrompt" class="dropzone-content">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p class="dropzone-main-text"><strong>Click to select</strong> or drag &amp; drop photos here</p>
+                <p class="dropzone-sub-text">PNG, JPG, JPEG &bull; 5–10 images required &bull; Max 10MB each</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── LIVE CAMERA TAB ── -->
+          <div id="enrollModeCamera" class="hidden">
+            <div class="enroll-info-bar" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.25);color:#6ee7b7">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              Position face in frame. System auto-captures <strong>10 photos</strong> at different angles.
+            </div>
+
+            <!-- Video preview -->
+            <div class="cam-preview-wrap cam-preview-enroll" id="enrollCamWrap">
+              <video id="enrollCamVideo" autoplay muted playsinline class="cam-video"></video>
+              <canvas id="enrollCamCanvas" class="cam-canvas-hidden"></canvas>
+              <!-- Capture flash effect -->
+              <div class="cam-flash" id="enrollCamFlash"></div>
+              <!-- Face guide oval -->
+              <div class="cam-face-guide">
+                <svg viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <ellipse cx="100" cy="120" rx="80" ry="100" stroke="rgba(16,185,129,0.5)" stroke-width="2" stroke-dasharray="8 4"/>
+                </svg>
+              </div>
+              <!-- Capture count overlay -->
+              <div class="cam-capture-count" id="enrollCamCount">0 / 10</div>
+            </div>
+
+            <!-- Progress dots -->
+            <div class="cam-dot-row" id="enrollCamDots">
+              <!-- JS fills these in -->
+            </div>
+
+            <!-- Camera controls -->
+            <div style="display:flex;gap:0.6rem;margin-top:0.4rem">
+              <button id="enrollStartCamBtn" class="btn btn-primary" style="flex:1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                Start Camera
+              </button>
+              <button id="enrollCaptureBtnManual" class="btn btn-secondary" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Capture Now
+              </button>
+              <button id="enrollStopCamBtn" class="btn btn-outline" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                Stop
+              </button>
+            </div>
+          </div>
+
+          <!-- Shared: count + preview grid -->
+          <div class="enroll-photo-count" style="margin-top:0.5rem">
+            <span id="enrollPhotoCountText">0 photos selected</span>
+            <span id="enrollPhotoCountBadge" class="badge badge-neutral">Need 5–10</span>
+          </div>
+          <div class="enroll-preview-grid" id="enrollPreviewGrid"></div>
+
+          <!-- Progress bar -->
+          <div class="enroll-progress hidden" id="enrollProgress">
+            <div class="enroll-progress-label">
+              <span id="enrollProgressText">Enrolling biometrics...</span>
+              <span id="enrollProgressPct">0%</span>
+            </div>
+            <div class="enroll-progress-bar"><div class="enroll-progress-fill" id="enrollProgressFill"></div></div>
+          </div>
+
+          <!-- Status message -->
+          <div class="enroll-status hidden" id="enrollStatusMsg"></div>
+
+        </div>
+
+        <!-- Pinned Modal Footer -->
+        <div class="modal-footer modal-footer-fixed">
+          <button type="button" id="enrollBackBtn" class="btn btn-outline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+          <button type="button" id="enrollSubmitBtn" class="btn btn-emerald" disabled>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span id="enrollSubmitBtnText">Save &amp; Add to Database</span>
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 

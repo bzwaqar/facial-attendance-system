@@ -22,23 +22,20 @@ class StudentBase(BaseModel):
         description="Full legal or registered name of the student.",
         examples=["Sarah Connor"],
     )
-    department: str = Field(
-        ...,
-        min_length=1,
+    department: Optional[str] = Field(
+        default="Computer Science",
         max_length=100,
         description="Academic department name.",
         examples=["Computer Science"],
     )
-    semester: str = Field(
-        ...,
-        min_length=1,
+    semester: Optional[str] = Field(
+        default="1st",
         max_length=20,
         description="Current active semester.",
         examples=["6th"],
     )
-    section: str = Field(
-        ...,
-        min_length=1,
+    section: Optional[str] = Field(
+        default="A",
         max_length=20,
         description="Section code.",
         examples=["A"],

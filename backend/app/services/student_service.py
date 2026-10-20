@@ -43,9 +43,9 @@ class StudentService:
         student = Student(
             student_id=student_in.student_id,
             name=student_in.name,
-            department=student_in.department,
-            semester=student_in.semester,
-            section=student_in.section,
+            department=student_in.department or "Computer Science",
+            semester=student_in.semester or "1st",
+            section=student_in.section or "A",
             is_active=student_in.is_active,
         )
         session.add(student)

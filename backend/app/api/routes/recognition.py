@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.models.student import Student
 from app.db.session import get_db
-from app.liveness import BaseLivenessDetector, get_liveness_detector
+from app.liveness import BaseLivenessDetector, LivenessStatus, get_liveness_detector
 from app.ml.engine import FaceEngine, get_face_engine
 from app.ml.exceptions import InvalidImageError
 from app.schemas.recognition import (
@@ -184,10 +184,18 @@ async def _process_recognition_frame(
                     bbox=face.bbox,
                     landmarks=face.landmarks,
                 )
-                is_live = live_res.is_live
                 liveness_score = live_res.score
                 liveness_status = live_res.status.value
                 liveness_reason = live_res.reason
+
+                # Only flag confirmed SPOOF as is_live = False
+                # If UNCERTAIN (accumulating frames or single snapshot), do not falsely accuse real person of presentation attack
+                if live_res.status == LivenessStatus.SPOOF:
+                    is_live = False
+                elif live_res.status == LivenessStatus.LIVE:
+                    is_live = True
+                else:
+                    is_live = None if settings.LIVENESS_STRICT_MODE else True
             except Exception as live_err:
                 logger.warning("Error evaluating liveness on face #%d: %s", idx, live_err)
 

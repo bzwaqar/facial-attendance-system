@@ -741,6 +741,8 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 200;
+  padding: 1rem;
+  overflow-y: auto;
 }
 
 .modal-dialog {
@@ -752,6 +754,10 @@ body {
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: modalIn 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 820px);
+  position: relative;
 }
 
 @keyframes modalIn {
@@ -765,6 +771,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -777,6 +784,24 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-body::-webkit-scrollbar-track {
+  background: rgba(10, 14, 23, 0.4);
+  border-radius: 4px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }
 
 .form-group {
@@ -834,4 +859,818 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+/* ==============================================================================
+   Student Enrollment Modal – Extended Styles
+   ============================================================================== */
+
+/* Wider modal for the 2-step enrollment */
+.modal-dialog-lg {
+  max-width: 660px;
+}
+
+/* Container for Step 2 with scrollable body and fixed footer */
+.modal-step2-container {
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.modal-step2-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-step2-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-step2-body::-webkit-scrollbar-track {
+  background: rgba(10, 14, 23, 0.4);
+  border-radius: 4px;
+}
+.modal-step2-body::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+.modal-step2-body::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+.modal-footer-fixed {
+  flex-shrink: 0;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  align-items: center;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+  z-index: 15;
+  margin-top: auto;
+}
+
+.enroll-target-student-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+  color: #93c5fd;
+}
+
+.btn-pulse {
+  animation: pulseGlow 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 4px var(--success); transform: scale(1); }
+  100% { box-shadow: 0 0 16px var(--success), 0 0 24px rgba(16,185,129,0.5); transform: scale(1.02); }
+}
+
+/* Modal header layout for enrollment */
+.enroll-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.enroll-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05));
+  border: 1px solid rgba(16,185,129,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.modal-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.enroll-close {
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.enroll-close:hover { color: var(--text-primary); }
+
+/* ── Step Indicator ─────────────────────────────── */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(10,14,23,0.4);
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+  background: var(--bg-card);
+  transition: all 0.3s ease;
+}
+
+.step-item.active .step-circle {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.step-item.done .step-circle {
+  border-color: var(--success);
+  background: var(--success);
+  color: #fff;
+}
+
+.step-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: color 0.3s ease;
+}
+
+.step-item.active .step-label { color: var(--primary); }
+.step-item.done .step-label   { color: var(--success); }
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color);
+  margin: 0 1rem;
+  margin-bottom: 1.4rem;
+  max-width: 80px;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+.step-connector.done { background: var(--success); }
+
+/* ── Info Banner ────────────────────────────────── */
+.enroll-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.82rem;
+  color: #93c5fd;
+  margin-bottom: 1rem;
+}
+
+/* ── Enrollment Drop Zone ───────────────────────── */
+.enroll-dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  background: rgba(10,14,23,0.3);
+  margin-bottom: 0.75rem;
+}
+
+.enroll-dropzone:hover,
+.enroll-dropzone.dragover {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.enroll-dropzone.has-files {
+  border-color: var(--success);
+  border-style: solid;
+  padding: 0.75rem 1.5rem;
+}
+
+/* ── Photo Count Row ────────────────────────────── */
+.enroll-photo-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* ── Preview Grid ───────────────────────────────── */
+.enroll-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  max-height: 145px;
+  overflow-y: auto;
+}
+
+.enroll-preview-grid::-webkit-scrollbar { width: 5px; }
+.enroll-preview-grid::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+
+.enroll-thumb-wrap {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+}
+
+.enroll-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.enroll-thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.enroll-thumb-wrap:hover .enroll-thumb-remove { opacity: 1; }
+
+.enroll-thumb-num {
+  position: absolute;
+  bottom: 3px;
+  left: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  font-family: var(--font-mono);
+}
+
+/* ── Progress Bar ───────────────────────────────── */
+.enroll-progress {
+  margin-bottom: 0.75rem;
+}
+
+.enroll-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.enroll-progress-bar {
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.enroll-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* ── Status Message ─────────────────────────────── */
+.enroll-status {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.enroll-status.success {
+  background: var(--success-bg);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: var(--success);
+}
+
+.enroll-status.error {
+  background: var(--danger-bg);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: var(--danger);
+}
+
+.enroll-status.warning {
+  background: var(--warning-bg);
+  border: 1px solid rgba(245,158,11,0.3);
+  color: var(--warning);
+}
+
+/* ==============================================================================
+   Camera Mode UI – Tabs, Preview, Scanning, Live Attendance
+   ============================================================================== */
+
+/* ── Mode Tab Group ─────────────────────────────── */
+.cam-tab-group {
+  display: flex;
+  gap: 0;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 3px;
+  width: fit-content;
+}
+
+.probe-tabs {
+  margin: 0 1.25rem 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(18,24,38,0.6);
+  width: 100%;
+  gap: 0.25rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0;
+}
+
+.cam-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: calc(var(--radius-md) - 3px);
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.cam-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.probe-tabs .cam-tab.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.cam-tab:hover:not(.active) {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.04);
+}
+
+/* ── Webcam Preview Container ───────────────────── */
+.cam-preview-wrap {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-color);
+  aspect-ratio: 4 / 3;
+  max-height: 260px;
+}
+
+.cam-preview-enroll {
+  max-height: 180px;
+}
+
+.cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1); /* mirror for natural webcam feel */
+}
+
+.cam-canvas-hidden {
+  display: none;
+}
+
+/* ── Scanning Ring Overlay ──────────────────────── */
+.cam-scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.cam-scan-overlay.active {
+  opacity: 1;
+}
+
+.cam-scan-ring {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid rgba(59,130,246,0.6);
+  box-shadow: 0 0 0 0 rgba(59,130,246,0.4);
+  animation: scanPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes scanPulse {
+  0%   { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
+  50%  { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(59,130,246,0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
+/* ── Camera Status Strip ────────────────────────── */
+.cam-status-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  padding: 0.5rem 0.75rem 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+}
+
+.cam-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.cam-status-dot.scanning {
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
+  animation: pulse-dot 1.2s infinite;
+}
+
+.cam-status-dot.matched {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.cam-status-dot.error {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+}
+
+/* ── Auto-mark toggle row ───────────────────────── */
+.cam-automark-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.65rem 0;
+  font-size: 0.82rem;
+}
+
+.cam-toggle-wrap {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cam-toggle-wrap input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.cam-toggle-slider {
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  background: var(--border-subtle);
+  border-radius: 10px;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.cam-toggle-slider::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.cam-toggle-wrap input:checked + .cam-toggle-slider {
+  background: var(--success);
+}
+
+.cam-toggle-wrap input:checked + .cam-toggle-slider::after {
+  transform: translateX(16px);
+}
+
+.cam-toggle-label {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+/* ── Live Recognition Result Card ──────────────── */
+.cam-live-result {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.cam-live-result.matched {
+  border-color: rgba(16,185,129,0.4);
+  background: rgba(16,185,129,0.06);
+}
+
+.cam-live-result.unknown {
+  border-color: rgba(245,158,11,0.3);
+  background: rgba(245,158,11,0.05);
+}
+
+.cam-live-result.spoof {
+  border-color: rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.05);
+}
+
+.cam-live-result-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.cam-live-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cam-live-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── Enrollment Camera: Flash Effect ────────────── */
+.cam-flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  pointer-events: none;
+  transition: background 0.05s;
+}
+
+.cam-flash.flash-active {
+  background: rgba(255,255,255,0.45);
+}
+
+/* ── Enrollment Camera: Face Guide ──────────────── */
+.cam-face-guide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.cam-face-guide svg {
+  width: 55%;
+  height: 80%;
+  animation: guideBreath 3s ease-in-out infinite;
+}
+
+@keyframes guideBreath {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+/* ── Enrollment Camera: Capture Count ───────────── */
+.cam-capture-count {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* ── Progress Dots ──────────────────────────────── */
+.cam-dot-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.cam-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-subtle);
+  border: 1.5px solid var(--border-color);
+  transition: all 0.25s ease;
+}
+
+.cam-dot.filled {
+  background: var(--success);
+  border-color: var(--success);
+  box-shadow: 0 0 5px rgba(16,185,129,0.6);
+}
+
+.cam-dot.capturing {
+  background: var(--primary);
+  border-color: var(--primary);
+  animation: pulse-dot 0.6s infinite;
+}
+
+/* ── Live Name / ID Overlay (on video) ─────────── */
+.cam-name-overlay {
+  position: absolute;
+  bottom: 38px; /* sit above the status strip */
+  left: 8px;
+  right: 8px;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.cam-name-overlay.hidden {
+  opacity: 0 !important;
+  transform: translateY(8px);
+  display: block !important; /* override .hidden display:none so transition works */
+}
+
+.cam-name-overlay:not(.hidden) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cam-name-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(10, 14, 23, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 0.82rem;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.cam-name-badge.matched {
+  border-color: rgba(16,185,129,0.5);
+  background: rgba(16,185,129,0.18);
+}
+
+.cam-name-badge.unknown {
+  border-color: rgba(245,158,11,0.4);
+  background: rgba(245,158,11,0.12);
+}
+
+.cam-name-badge.spoof {
+  border-color: rgba(239,68,68,0.4);
+  background: rgba(239,68,68,0.15);
+}
+
+.cam-name-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.cam-name-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.cam-name-text {
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+}
+
+.cam-name-sub {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.6);
+  font-family: var(--font-mono);
+  margin-top: 1px;
+}
+
+.cam-name-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Enrollment Auto-Submit Overlay ─────────────── */
+.cam-enrolling-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10,14,23,0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  z-index: 10;
+}
+
+.cam-enrolling-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: var(--success);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
